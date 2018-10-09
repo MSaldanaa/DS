@@ -1,0 +1,20 @@
+setwd("D:/Marketing and retail analytics/MRA - Class Exercises Datasets Dec 2016")
+df_groceries<- read.csv("MBA-Apriori-Groceries.csv")
+summary(df_groceries)
+library(arules)
+txn = read.transactions(file="MBA-Apriori-Groceries.csv", rm.duplicates= TRUE, format="basket",sep=",",cols=1);
+basket_rules <- apriori(txn,parameter = list(sup = 0.01, conf = 0.5,target="rules"))
+if(sessionInfo()['basePkgs']=="tm" | sessionInfo()['otherPkgs']=="tm"){
+  detach(package:tm, unload=TRUE)
+}
+inspect(basket_rules)
+df_basket <- as(basket_rules,"data.frame")
+View(df_basket)
+print(df_basket)
+library(arulesViz)
+plot(basket_rules)
+plot(basket_rules, method = "grouped", control = list(k = 5))
+plot(basket_rules, method="graph", control=list(type="items"))
+plot(basket_rules, method="paracoord",  control=list(alpha=.5, reorder=TRUE))
+plot(basket_rules,measure=c("support","lift"),shading="confidence",interactive=F)
+itemFrequencyPlot(txn, topN = 5)
