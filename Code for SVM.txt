@@ -1,0 +1,81 @@
+-- Radial:
+grid <- expand.grid(sigma = c(.01, .015, 0.2), C = c(0.25, 0.5, 0.75, 1, 1.25, 1.5)) 
+svmRad_mod <- train(class ~ ., data = trainData, method = "svmRadial", preProc = c("center", "scale"), metric="ROC", tuneGrid = grid, trControl=ctrl) 
+
+levels(trainData$class) <- list (Risky="0", non="1")
+
+
+--ROC was used to select the optimal model using the largest value.
+--The final values used for the model were sigma = 0.015 and C = 0.25.
+--ROC - 0.6856203  
+--Sensitivity - 0.6222222  
+--Specificity - 0.5598520
+
+
+
+-- Linear
+ctrl1 <- trainControl(method="repeatedcv",   		# 10 fold cross validation 
+                     repeats=5,					# 5 repeats of cv 
+                     summaryFunction=twoClassSummary,	# To get AUROC 
+                     classProbs=TRUE, sampling='down') 
+grid1 <- expand.grid(C = c(0.25, 0.5, 0.75, 1, 1.25, 1.5))  
+
+svmLin_mod <- train(class ~ ., data = trainData,  method = "svmLinear", preProc = c("center","scale"), metric="ROC", tuneGrid = grid1, trControl=ctrl1)
+
+--ROC was used to select the optimal model using the largest value.
+--The final value used for the model was C = 0.5.
+--ROC - 0.5603762  
+--Sensitivity - 0.4444444  
+--Specificity - 0.5671970
+
+
+
+-- Polynomial
+grid2 <- expand.grid(C = c(0.25, 0.5, 0.75, 1, 1.25, 1.5), degree=c(1, 2, 3), scale=c(.001, 0.01, 0.1))  
+svmPoly_mod <- train(class ~ ., data = trainData,  method = "svmPoly", preProc = c("center","scale"), metric="ROC", tuneLength = 3, trControl=ctrl1)	
+svmPoly_mod 
+
+--ROC was used to select the optimal model using the largest value.
+--The final values used for the model were degree = 1, scale = 0.1 and C = 1.
+-- ROC - 0.4952410  
+--Sensitivity  - 0.6666667  
+--Specificity - 0.3032377
+
+
+comparisons <- resamples(list(linear=svmLin_mod, radial=svmRad_mod, poly=svmPoly_mod)) 
+summary(comparisons) 
+comparisons$values 
+
+bwplot(comparisons, metric="ROC", ylab =c("Linear", "Polynomial", "Radial"))  # boxplot 
+
+
+
+
+
+==========================================================================================
+
+
+-- Radial Model performs better
+--ROC - 0.6856203  
+--Sensitivity - 0.6222222  
+--Specificity - 0.5598520
+
+
+===========================================================================================
+
+
+pred_svm <- predict(svmRad_mod, newdata=testData, type="prob")
+y_pred_num_svm <- ifelse(pred_svm > 0.1, 1, 0)
+y_pred_svm <- factor(y_pred_num_svm, levels = c(0,1))
+y_act_svm <- testData$class
+
+y_pred_svm
+y_act_svm
+
+mean(y_pred_svm == y_act_svm)
+
+=================================================================================================
+
+
+
+

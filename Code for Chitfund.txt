@@ -1,0 +1,16 @@
+install.packages ("dplyr")
+library(dplyr)
+chitfund <- read.csv("E:/chitfund.csv", header=FALSE)
+colnames(chitfund) <- c("Month", "Contribution", "Amount", "Commission", "Netamount", "Arrears")
+totalarrear <- summarise(chitfund, totalarrear = sum(chitfund$Arrears))
+totalcontribution <- summarise(chitfund, totalcontribution = sum(chitfund$Contribution))
+
+for (row in 1:nrow(chitfund)){
+ totalamount[row] <- chitfund$Netamount[row] + totalarrear
+ annual[row] <- (totalamount[row] - totalcontribution) / totalcontribution
+ mreturn[row] <- ((1 + annual[row]) ^ (1/25)) - 1
+ chitfund$areturn[row] <- (mreturn[row] * 12) * 100
+} 
+
+write.csv(chitfund,"E:/chitfundresults.csv")
+ 

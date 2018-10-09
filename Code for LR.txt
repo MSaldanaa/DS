@@ -1,0 +1,212 @@
+install.packages ("dplyr")
+library(dplyr)
+install.packages ("caret")
+library (caret)
+install.packages ("DMwR")
+library(DMwR)
+install.packages ("ROSE")
+library(ROSE)
+install.packages("e1071")
+library(e1071)
+install.packages("InformationValue")
+library(InformationValue)
+set.seed(123)
+
+mydata <- read.csv("E:/Assignment.csv", header=TRUE)
+mydata = subset(mydata, select = -c(CashFlowId, CustomerInfoId, BankCloserDate, FinanceCompanyCloserDate, LoanFrmOthersCloserDate, CreatedBy, CreatedDate, Updatedby, UpdatedDate))
+mydata <- rename(mydata, class = Y.Risky.vs.non.risky)
+
+table(mydata$class)
+mydata$class[mydata$class == '#N/A'] <- NA
+colSums (is.na(mydata))
+mydata <- mydata[complete.cases(mydata), ]
+
+write.csv(mydata, "E:/temp.csv")
+mydata1 <- read.csv("E:/temp.csv", header=TRUE)
+mydata1$class <- ifelse(mydata1$class == "non-risky", 1, 0)
+mydata1$class <- factor(mydata1$class, levels = c(0, 1))
+
+trainDataIndex<- createDataPartition(mydata1$class, p=0.7, list = FALSE)
+trainData<- mydata1[trainDataIndex, ] 
+testData<- mydata1[-trainDataIndex, ]
+
+table(trainData$class)
+table(testData$class)
+
+set.seed(100) 
+down_train <- downSample(x = trainData[, -ncol(trainData)], y = trainData$class)
+table(down_train$Class) 
+
+/*
+Output:
+0 1 
+9 9 
+*/
+
+
+up_train <- upSample(x = trainData[, -ncol(trainData)], y = trainData$class)
+table(up_train$Class) 
+
+/*
+Output:
+  0   1 
+467 467
+*/
+
+
+smote_train <- SMOTE(class ~ ., data  = trainData)                         
+table(smote_train$class)
+
+/*
+Output:
+ 0  1 
+27 36 
+*/
+
+
+
+rose_train <- ROSE(class ~ ., data  = trainData)$data                       
+table(rose_train$class)
+
+/*
+Output:
+  1   0 
+237 239 
+*/
+
+
+
+# down_train
+# up_train
+# smote_train
+# rose_train
+
+logitmod_orig <- glm(class~., family=binomial, data=trainData)
+logitmod_down<- glm(Class ~ ., family = binomial, data=down_train) 
+logitmod_up<- glm(Class ~ ., family = binomial, data=up_train) 
+logitmod_smote<- glm(class ~ ., family = binomial, data=smote_train) 
+logitmod_rose<- glm(class ~ ., family = binomial, data=rose_train) 
+
+
+outside_models <- list(original = logitmod_orig, down = logitmod_down, up = logitmod_up, SMOTE = logitmod_smote, ROSE = logitmod_rose)
+
+
+-- Original Model
+pred_orig <- predict(logitmod_orig, newdata=testData, type="response")
+y_pred_num_orig <- ifelse(pred_orig > 0.1, 1, 0)
+y_pred_orig <- factor(y_pred_num_orig, levels = c(0,1))
+y_act_orig <- testData$class
+
+y_pred_orig
+y_act_orig
+
+mean(y_pred_orig == y_act_orig)
+caret::confusionMatrix(y_pred_orig, y_act_orig, positive="0")
+InformationValue::plotROC(y_act_orig, pred_orig) 
+InformationValue::AUROC(y_act_orig, pred_orig)
+
+-- Accuracy : 0.9704
+-- AUROC: 0.4925
+-- Sensitivity : 0.00000         
+-- Specificity : 0.98500
+ 
+
+
+-- UpSampling Model
+
+pred_up <- predict(logitmod_up, newdata=testData, type="response")
+y_pred_num_up <- ifelse(pred_up > 0.1, 1, 0)
+y_pred_up <- factor(y_pred_num_up, levels = c(0,1))
+y_act_up <- testData$class
+
+y_pred_up
+y_act_up
+
+mean(y_pred_up == y_act_up)
+caret::confusionMatrix(y_pred_up, y_act_up, positive="0")
+InformationValue::plotROC(y_act_up, pred_up) 
+InformationValue::AUROC(y_act_up, pred_up) 
+-- Accuracy : 0.9015 
+-- AUROC: 0.6216667
+-- Sensitivity : 0.333333        
+-- Specificity : 0.910000 
+
+
+
+-- Downsampling Model
+pred_down <- predict(logitmod_down, newdata=testData, type="response")
+y_pred_num_down <- ifelse(pred_down > 0.1, 1, 0)
+y_pred_down <- factor(y_pred_num_down, levels = c(0,1))
+y_act_down <- testData$class
+--Accuracy : 0.5517
+-- AUROC:  0.7775
+-- Sensitivity : 1.00000         
+-- Specificity : 0.54500
+
+
+
+
+-- SMOTE Model
+pred_smote <- predict(logitmod_smote, newdata=testData, type="response")
+y_pred_num_smote <- ifelse(pred_smote > 0.1, 1, 0)
+y_pred_smote <- factor(y_pred_num_smote, levels = c(0,1))
+y_act_smote <- testData$class
+
+y_pred_smote
+y_act_smote
+
+mean(y_pred_smote == y_act_smote)
+caret::confusionMatrix(y_pred_smote, y_act_smote, positive="0")
+InformationValue::plotROC(y_act_smote, pred_smote) 
+InformationValue::AUROC(y_act_smote, pred_smote) 
+--Accuracy : 0.4384
+--AUROC:  0.5508333
+-- Sensitivity : 0.666667        
+-- Specificity : 0.435000 
+
+
+
+-- ROSE Model
+pred_rose <- predict(logitmod_rose, newdata=testData, type="response")
+y_pred_num_rose <- ifelse(pred_rose > 0.1, 1, 0)
+y_pred_rose <- factor(y_pred_num_rose, levels = c(0,1))
+y_act_rose <- testData$class
+
+y_pred_rose
+y_act_rose
+
+mean(y_pred_rose == y_act_rose)
+caret::confusionMatrix(y_pred_rose, y_act_rose, positive="0")
+InformationValue::plotROC(y_act_rose, pred_rose) 
+InformationValue::AUROC(y_act_rose, pred_rose) 
+-- Accuracy : 0.6059 
+-- AUROC: 0.6375
+-- Sensitivity : 0.666667        
+-- Specificity : 0.605000
+
+
+
+
+--========================================================================================
+
+
+Have selected UpSampling Model.
+
+No change in the Specificity & Sensitivity in the Upsampling Model, when the default rate drops to 2%
+
+
+
+-- Risky -0
+-- Nonrisky -1
+
+
+===========================================================================================
+
+
+
+
+
+
+
+
+
